@@ -1,0 +1,44 @@
+name: build-and-deploy-pages
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: sigco3111/hegemony-war
+          path: game
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm ci --engine-strict=false
+        working-directory: game
+      - name: build static solo client
+        run: npx vite build --mode static
+        working-directory: game
+        env:
+          PAGES_BASE: /hegemony-war-pages/
+          CDN_BASE: /hegemony-war-pages
+          GAME_ENV: prod
+          DOMAIN: sigco3111.github.io
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: game/static
+      - id: deployment
+        uses: actions/deploy-pages@v4
